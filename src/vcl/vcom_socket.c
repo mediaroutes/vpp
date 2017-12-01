@@ -35,6 +35,8 @@
 #define IOV_MAX __IOV_MAX
 #endif
 
+#define VCOM_PREALLOC_SIZE 200000
+
 /*
  * VCOM_SOCKET Private definitions and functions.
  */
@@ -3507,6 +3509,20 @@ vcom_socket_main_init (void)
 
   if (!vsm->init)
     {
+#ifdef VCOM_PREALLOC_SIZE
+      /* TBD: define FD_MAXSIZE and use it here */
+      pool_alloc (vsm->vsockets, VCOM_PREALLOC_SIZE);
+      vsm->sockidx_by_fd = hash_create (VCOM_PREALLOC_SIZE, sizeof (i32));
+
+      pool_alloc (vsm->vepolls, VCOM_PREALLOC_SIZE);
+      vsm->epollidx_by_epfd = hash_create (1000, sizeof (i32));
+
+      pool_alloc (vsm->vepitems, 1000);
+      vsm->epitemidx_by_epfdfd = hash_create (1000, sizeof (i32));
+
+      vsm->epitemidxs_by_epfd = hash_create (1000, sizeof (i32 *));
+      vsm->epitemidxs_by_fd = hash_create (1000, sizeof (i32 *));
+#else
       /* TBD: define FD_MAXSIZE and use it here */
       pool_alloc (vsm->vsockets, FD_SETSIZE);
       vsm->sockidx_by_fd = hash_create (0, sizeof (i32));
@@ -3519,7 +3535,7 @@ vcom_socket_main_init (void)
 
       vsm->epitemidxs_by_epfd = hash_create (0, sizeof (i32 *));
       vsm->epitemidxs_by_fd = hash_create (0, sizeof (i32 *));
-
+#endif
       clib_time_init (&vsm->clib_time);
 
       vsm->init = 1;
