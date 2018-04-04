@@ -523,7 +523,8 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0,
                            ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
-                           u8 *p_dont_translate, void *d, void *e)
+                           u8 *p_dont_translate, void *d, void *e,
+                           u8 output_feature)
 {
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
@@ -553,7 +554,7 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].in2out, &kv0,
                               &value0))
     {
-      if (vnet_buffer(b0)->sw_if_index[VLIB_TX] != ~0)
+      if (output_feature)
         {
           if (PREDICT_FALSE(nat_not_translate_output_feature(sm,
               ip0, SNAT_PROTOCOL_ICMP, key0.port, thread_index)))
@@ -653,7 +654,8 @@ u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0,
                            ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
-                           u8 *p_dont_translate, void *d, void *e)
+                           u8 *p_dont_translate, void *d, void *e,
+                           u8 output_feature)
 {
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
@@ -725,7 +727,8 @@ static inline u32 icmp_in2out (snat_main_t *sm,
                                u32 next0,
                                u32 thread_index,
                                void *d,
-                               void *e)
+                               void *e,
+                               u8 output_feature)
 {
   snat_session_key_t sm0;
   u8 protocol;
@@ -743,7 +746,8 @@ static inline u32 icmp_in2out (snat_main_t *sm,
   echo0 = (icmp_echo_header_t *)(icmp0+1);
 
   next0_tmp = sm->icmp_match_in2out_cb(sm, node, thread_index, b0, ip0,
-                                       &protocol, &sm0, &dont_translate, d, e);
+                                       &protocol, &sm0, &dont_translate, d, e,
+                                       output_feature);
   if (next0_tmp != ~0)
     next0 = next0_tmp;
   if (next0 == SNAT_IN2OUT_NEXT_DROP || dont_translate)
@@ -1019,10 +1023,11 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
                                          u32 next0,
                                          f64 now,
                                          u32 thread_index,
-                                         snat_session_t ** p_s0)
+                                         snat_session_t ** p_s0,
+                                         u8 output_feature)
 {
   next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
-                      next0, thread_index, p_s0, 0);
+                      next0, thread_index, p_s0, 0, output_feature);
   snat_session_t * s0 = *p_s0;
   if (PREDICT_TRUE(next0 != SNAT_IN2OUT_NEXT_DROP && s0))
     {
@@ -1554,7 +1559,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   next0 = icmp_in2out_slow_path
                     (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0,
-                     node, next0, now, thread_index, &s0);
+                     node, next0, now, thread_index, &s0, is_output_feature);
                   goto trace00;
                 }
             }
@@ -1746,7 +1751,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   next1 = icmp_in2out_slow_path
                     (sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
-                     next1, now, thread_index, &s1);
+                     next1, now, thread_index, &s1, is_output_feature);
                   goto trace01;
                 }
             }
@@ -1974,7 +1979,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   next0 = icmp_in2out_slow_path
                     (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
-                     next0, now, thread_index, &s0);
+                     next0, now, thread_index, &s0, is_output_feature);
                   goto trace0;
                 }
             }
@@ -2831,7 +2836,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 
               next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0,
                                   rx_fib_index0, node, next0, thread_index,
-                                  &ses0, &dm0);
+                                  &ses0, &dm0, 0);
               goto trace0;
             }
 
@@ -2981,7 +2986,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 
               next1 = icmp_in2out(sm, b1, ip1, icmp1, sw_if_index1,
                                   rx_fib_index1, node, next1, thread_index,
-                                  &ses1, &dm1);
+                                  &ses1, &dm1, 0);
               goto trace1;
             }
 
@@ -3167,7 +3172,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 
               next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0,
                                   rx_fib_index0, node, next0, thread_index,
-                                  &ses0, &dm0);
+                                  &ses0, &dm0, 0);
               goto trace00;
             }
 
@@ -3349,7 +3354,8 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
                           u32 thread_index, vlib_buffer_t *b0,
                           ip4_header_t *ip0, u8 *p_proto,
                           snat_session_key_t *p_value,
-                          u8 *p_dont_translate, void *d, void *e)
+                          u8 *p_dont_translate, void *d, void *e,
+                          u8 output_feature)
 {
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
@@ -3996,7 +4002,7 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
           if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
             {
               next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0,
-                                  rx_fib_index0, node, next0, ~0, 0, 0);
+                                  rx_fib_index0, node, next0, ~0, 0, 0, 0);
               goto trace0;
             }
 

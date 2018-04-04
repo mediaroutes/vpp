@@ -366,7 +366,8 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0,
                            ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
-                           u8 *p_dont_translate, void *d, void *e)
+                           u8 *p_dont_translate, void *d, void *e,
+                           u8 output_feature)
 {
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
@@ -511,7 +512,8 @@ u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0,
                            ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
-                           u8 *p_dont_translate, void *d, void *e)
+                           u8 *p_dont_translate, void *d, void *e,
+                           u8 output_feature)
 {
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
@@ -594,7 +596,8 @@ static inline u32 icmp_out2in (snat_main_t *sm,
   echo0 = (icmp_echo_header_t *)(icmp0+1);
 
   next0_tmp = sm->icmp_match_out2in_cb(sm, node, thread_index, b0, ip0,
-                                       &protocol, &sm0, &dont_translate, d, e);
+                                       &protocol, &sm0, &dont_translate, d, e,
+                                       0);
   if (next0_tmp != ~0)
     next0 = next0_tmp;
   if (next0 == SNAT_OUT2IN_NEXT_DROP || dont_translate)
@@ -2447,7 +2450,8 @@ u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
                           u32 thread_index, vlib_buffer_t *b0,
                           ip4_header_t *ip0, u8 *p_proto,
                           snat_session_key_t *p_value,
-                          u8 *p_dont_translate, void *d, void *e)
+                          u8 *p_dont_translate, void *d, void *e,
+                          u8 output_feature)
 {
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
